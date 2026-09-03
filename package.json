@@ -1,0 +1,14 @@
+{
+  "name": "heyama-test",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api start:dev",
+    "build": "pnpm --filter web build && pnpm --filter api build",
+    "lint": "pnpm --filter web lint && pnpm --filter api lint",
+    "test:api": "pnpm --filter api test"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}
