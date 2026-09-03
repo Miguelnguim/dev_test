@@ -13,11 +13,6 @@ import { StorageService } from '../storage/storage.service.js';
 import { ObjectsGateway } from './objects.gateway.js';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const EXTENSION_BY_MIME: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-};
 
 @Injectable()
 export class ObjectsService {
@@ -46,8 +41,7 @@ export class ObjectsService {
       );
     }
 
-    const extension = EXTENSION_BY_MIME[realMime];
-    const { key, url } = await this.storageService.uploadImage(file, extension);
+    const { key, url } = await this.storageService.uploadImage(file);
 
     const created = await this.objectModel.create({
       title: dto.title,

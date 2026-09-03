@@ -1,77 +1,71 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  DeleteObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
+import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
 import { v4 as uuid } from 'uuid';
 
 export interface UploadResult {
-  key: string;
+  key: string; // Cloudinary public_id, needed to delete the asset later
   url: string;
 }
 
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
-  private readonly client: S3Client;
-  private readonly bucket: string;
-  private readonly publicUrl: string;
 
   constructor(private readonly config: ConfigService) {
-    this.bucket = this.config.get<string>('R2_BUCKET_NAME') ?? '';
-    this.publicUrl = this.config.get<string>('R2_PUBLIC_URL') ?? '';
+    const cloudName = this.config.get<string>('CLOUDINARY_CLOUD_NAME');
+    const apiKey = this.config.get<string>('CLOUDINARY_API_KEY');
+    const apiSecret = this.config.get<string>('CLOUDINARY_API_SECRET');
 
-    const endpoint = this.config.get<string>('R2_ENDPOINT');
-    const accessKeyId = this.config.get<string>('R2_ACCESS_KEY_ID');
-    const secretAccessKey = this.config.get<string>('R2_SECRET_ACCESS_KEY');
-
-    if (!this.bucket || !this.publicUrl || !endpoint || !accessKeyId || !secretAccessKey) {
+    if (!cloudName || !apiKey || !apiSecret) {
       throw new Error(
-        'Missing object storage configuration. Check R2_ENDPOINT, R2_ACCESS_KEY_ID, ' +
-          'R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME and R2_PUBLIC_URL in your .env file.',
+        'Missing Cloudinary configuration. Check CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY ' +
+          'and CLOUDINARY_API_SECRET in your .env file.',
       );
     }
 
-    this.client = new S3Client({
-      region: this.config.get<string>('R2_REGION') ?? 'auto',
-      endpoint,
-      credentials: { accessKeyId, secretAccessKey },
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+      secure: true,
     });
   }
 
-  async uploadImage(
-    file: Express.Multer.File,
-    extension: string,
-  ): Promise<UploadResult> {
-    const key = `objects/${uuid()}.${extension}`;
+  async uploadImage(file: Express.Multer.File): Promise<UploadResult> {
+    const publicId = `objects/${uuid()}`;
 
     try {
-      await this.client.send(
-        new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-          Body: file.buffer,
-          ContentType: file.mimetype,
-        }),
-      );
+      const result = await new Promise<UploadApiResponse>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            public_id: publicId,
+            resource_type: 'image',
+            overwrite: false,
+          },
+          (error, uploadResult) => {
+            if (error || !uploadResult) {
+              return reject(error ?? new Error('Cloudinary upload failed'));
+            }
+            resolve(uploadResult);
+          },
+        );
+        uploadStream.end(file.buffer);
+      });
+
+      return { key: result.public_id, url: result.secure_url };
     } catch (error) {
-      this.logger.error('Failed to upload image to R2', error as Error);
+      this.logger.error('Failed to upload image to Cloudinary', error as Error);
       throw new InternalServerErrorException('Unable to upload image');
     }
-
-    return { key, url: `${this.publicUrl}/${key}` };
   }
 
   async deleteImage(key: string): Promise<void> {
     try {
-      await this.client.send(
-        new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
-      );
+      await cloudinary.uploader.destroy(key);
     } catch (error) {
-      // Do not block object deletion if the image is already gone from R2
-      this.logger.warn(`Failed to delete image ${key} from R2`, error as Error);
+      // Do not block object deletion if the image is already gone from Cloudinary
+      this.logger.warn(`Failed to delete image ${key} from Cloudinary`, error as Error);
     }
   }
 }

@@ -12,8 +12,8 @@ is optimized for a fast first load and a smooth live demo — no cold starts, no
 ## Features
 
 - Create / list / view / delete Objects
-- Image upload to Cloudflare R2 (S3-compatible), with real MIME-type sniffing (not just the
-  declared extension) and a 5 MB size limit
+- Image upload to Cloudinary, with real MIME-type sniffing (not just the declared extension) and
+  a 5 MB size limit
 - Real-time updates across all connected clients via Socket.IO (`object.created`, `object.deleted`)
 - Loading / empty / error / success states throughout
 - Responsive, glassmorphism-inspired UI built with shadcn/ui components
@@ -30,20 +30,25 @@ USER / RECRUITER
    RAILWAY (NestJS)
       │              │
       ▼              ▼
-MongoDB Atlas   Cloudflare R2
+MongoDB Atlas     Cloudinary
 ```
 
 Vercel and Railway were chosen specifically because neither puts the app to sleep between
 requests — the top priority for this project was to avoid a cold-start delay during a live
 recruiter demo.
 
+> **Note on the brief:** the original spec asked for an S3-compatible storage provider (Amazon S3
+> itself excluded). Cloudinary uses its own upload API rather than the S3 protocol, so this is a
+> deliberate deviation, chosen for its free tier. Swapping back to an S3-compatible provider
+> (Cloudflare R2, Backblaze B2, etc.) only requires rewriting `StorageService` — the rest of the
+> app is unaffected.
+
 ## Tech Stack
 
 **Frontend:** Next.js (App Router), TypeScript, Tailwind CSS v4, shadcn/ui components, Socket.IO
 client
-**Backend:** NestJS, TypeScript (ESM/NodeNext), Mongoose, Socket.IO, AWS SDK v3 (S3-compatible,
-pointed at Cloudflare R2)
-**Infra:** GitHub, Vercel, Railway, MongoDB Atlas, Cloudflare R2
+**Backend:** NestJS, TypeScript (ESM/NodeNext), Mongoose, Socket.IO, Cloudinary SDK
+**Infra:** GitHub, Vercel, Railway, MongoDB Atlas, Cloudinary
 **Testing:** Vitest (backend unit tests)
 
 ## Project Structure
@@ -73,15 +78,13 @@ NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
 NODE_ENV=development
 PORT=4000
 MONGODB_URI=
-R2_ENDPOINT=
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-R2_BUCKET_NAME=
-R2_PUBLIC_URL=
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 FRONTEND_URL=http://localhost:3000
 ```
 
-R2 credentials never reach the browser — the frontend only ever talks to the NestJS API.
+Cloudinary credentials never reach the browser — the frontend only ever talks to the NestJS API.
 
 ## Installation
 
@@ -108,7 +111,7 @@ pnpm dev:web   # Next.js on http://localhost:3000
 | POST   | `/objects`      | Create an object (multipart/form-data: title, description, image) |
 | GET    | `/objects`      | List all objects                    |
 | GET    | `/objects/:id`  | Get a single object                 |
-| DELETE | `/objects/:id`  | Delete an object (and its R2 image) |
+| DELETE | `/objects/:id`  | Delete an object (and its Cloudinary image) |
 
 Responses use `201`, `200`, `204`, `400`, `404`, `413`, and `500` as appropriate — never a blanket
 `200`.
@@ -122,18 +125,13 @@ Responses use `201`, `200`, `204`, `400`, `404`, `413`, and `500` as appropriate
 
 ## Deployment
 
-1. **Object storage — Cloudflare R2 or an S3-compatible alternative** (e.g. Backblaze B2, which
-   requires no credit card for its free tier) — create a bucket, enable public access, and
-   generate API credentials. For a non-R2 provider, set `R2_REGION` to the provider's actual
-   region (R2 accepts `auto`; most others don't).
+1. **Cloudinary** — create a free account (no credit card required), and grab your Cloud Name,
+   API Key and API Secret from the dashboard.
 2. **MongoDB Atlas** — create a free M0 cluster, a database user, and allow the Railway egress IP
    (or `0.0.0.0/0` for the demo).
 3. **Railway** — deploy `apps/api`, set the backend env vars above.
 4. **Vercel** — deploy `apps/web`, set `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_SOCKET_URL` to the
    Railway URL.
-
-If your R2 public URL uses a custom domain, add it to `remotePatterns` in
-`apps/web/next.config.ts` alongside the default `r2.dev` / `r2.cloudflarestorage.com` patterns.
 
 ## Security
 
@@ -141,8 +139,8 @@ If your R2 public URL uses a custom domain, add it to `remotePatterns` in
 - MongoDB `ObjectId` validated before every lookup
 - CORS restricted to `FRONTEND_URL` (no wildcard origin)
 - Upload validated by real file signature (not just the client-declared MIME type), capped at 5 MB
-- Server-generated UUID filenames — user input never controls the storage key
-- R2 credentials only ever live server-side
+- Server-generated UUID public IDs — user input never controls the storage key
+- Cloudinary credentials only ever live server-side
 - Centralized exception filter — internal error details are never sent to the client
 
 ## Performance
