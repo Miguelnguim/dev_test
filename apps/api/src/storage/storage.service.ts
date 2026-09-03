@@ -23,13 +23,21 @@ export class StorageService {
     this.bucket = this.config.get<string>('R2_BUCKET_NAME') ?? '';
     this.publicUrl = this.config.get<string>('R2_PUBLIC_URL') ?? '';
 
+    const endpoint = this.config.get<string>('R2_ENDPOINT');
+    const accessKeyId = this.config.get<string>('R2_ACCESS_KEY_ID');
+    const secretAccessKey = this.config.get<string>('R2_SECRET_ACCESS_KEY');
+
+    if (!this.bucket || !this.publicUrl || !endpoint || !accessKeyId || !secretAccessKey) {
+      throw new Error(
+        'Missing object storage configuration. Check R2_ENDPOINT, R2_ACCESS_KEY_ID, ' +
+          'R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME and R2_PUBLIC_URL in your .env file.',
+      );
+    }
+
     this.client = new S3Client({
-      region: 'auto',
-      endpoint: this.config.get<string>('R2_ENDPOINT'),
-      credentials: {
-        accessKeyId: this.config.get<string>('R2_ACCESS_KEY_ID') ?? '',
-        secretAccessKey: this.config.get<string>('R2_SECRET_ACCESS_KEY') ?? '',
-      },
+      region: this.config.get<string>('R2_REGION') ?? 'auto',
+      endpoint,
+      credentials: { accessKeyId, secretAccessKey },
     });
   }
 

@@ -122,10 +122,12 @@ Responses use `201`, `200`, `204`, `400`, `404`, `413`, and `500` as appropriate
 
 ## Deployment
 
-1. **MongoDB Atlas** — create a free M0 cluster, a database user, and allow the Railway egress IP
+1. **Object storage — Cloudflare R2 or an S3-compatible alternative** (e.g. Backblaze B2, which
+   requires no credit card for its free tier) — create a bucket, enable public access, and
+   generate API credentials. For a non-R2 provider, set `R2_REGION` to the provider's actual
+   region (R2 accepts `auto`; most others don't).
+2. **MongoDB Atlas** — create a free M0 cluster, a database user, and allow the Railway egress IP
    (or `0.0.0.0/0` for the demo).
-2. **Cloudflare R2** — create a bucket, enable public access (or a custom public domain), and
-   generate API credentials.
 3. **Railway** — deploy `apps/api`, set the backend env vars above.
 4. **Vercel** — deploy `apps/web`, set `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_SOCKET_URL` to the
    Railway URL.
