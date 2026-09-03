@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useState, type FormEvent } from 'react';
+import { useCallback, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -11,41 +12,61 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { createObject } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n/language-context';
+import { cn } from '@/lib/utils';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export function ObjectForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const applyFile = useCallback(
+    (file: File | undefined) => {
+      setError(null);
+
+      if (!file) {
+        setPreview(null);
+        return;
+      }
+
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        setError(t('form.errorInvalidType'));
+        setPreview(null);
+        return;
+      }
+
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setError(t('form.errorTooLarge'));
+        setPreview(null);
+        return;
+      }
+
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      if (fileInputRef.current) {
+        fileInputRef.current.files = dataTransfer.files;
+      }
+
+      setPreview(URL.createObjectURL(file));
+    },
+    [t],
+  );
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    setError(null);
+    applyFile(event.target.files?.[0]);
+  }
 
-    if (!file) {
-      setPreview(null);
-      return;
-    }
-
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setError('Only JPEG, PNG or WEBP images are allowed.');
-      event.target.value = '';
-      setPreview(null);
-      return;
-    }
-
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      setError('Image must be smaller than 5 MB.');
-      event.target.value = '';
-      setPreview(null);
-      return;
-    }
-
-    setPreview(URL.createObjectURL(file));
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    applyFile(event.dataTransfer.files?.[0]);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -58,53 +79,78 @@ export function ObjectForm() {
     const file = fileInputRef.current?.files?.[0];
 
     if (!file) {
-      setError('Please select an image.');
+      setError(t('form.errorRequiredImage'));
       return;
     }
 
     setIsSubmitting(true);
     try {
       await createObject(formData);
-      toast.success('Object created successfully.');
+      toast.success(t('form.success'));
       formEl.reset();
       setPreview(null);
       router.push('/');
     } catch {
-      setError('Unable to create this object. Please try again.');
+      setError(t('form.error'));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <motion.form
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+      onSubmit={handleSubmit}
+      className="space-y-6"
+    >
       {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </motion.div>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
-        <Input id="title" name="title" required maxLength={100} placeholder="MacBook Pro" />
+        <Label htmlFor="title">{t('form.titleLabel')}</Label>
+        <Input
+          id="title"
+          name="title"
+          required
+          maxLength={100}
+          placeholder={t('form.titlePlaceholder')}
+        />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">{t('form.descriptionLabel')}</Label>
         <Textarea
           id="description"
           name="description"
           required
           maxLength={1000}
-          placeholder="Professional laptop for development work."
+          placeholder={t('form.descriptionPlaceholder')}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="image">Image</Label>
+        <Label htmlFor="image">{t('form.imageLabel')}</Label>
         <label
           htmlFor="image"
-          className="flex aspect-[4/3] w-full max-w-sm cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-border/70 bg-background/40 text-sm text-muted-foreground transition-colors hover:bg-accent/40"
+          onDragOver={(event) => {
+            event.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          className={cn(
+            'flex aspect-[4/3] w-full max-w-sm cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed text-sm transition-colors',
+            isDragging
+              ? 'border-primary bg-accent/60'
+              : 'border-border/70 bg-background/40 text-muted-foreground hover:bg-accent/40',
+          )}
         >
           {preview ? (
             <Image
@@ -118,8 +164,8 @@ export function ObjectForm() {
           ) : (
             <>
               <UploadCloud className="size-6" />
-              <span>Click to upload an image</span>
-              <span className="text-xs">JPEG, PNG or WEBP — max 5 MB</span>
+              <span>{isDragging ? t('form.dropzoneActive') : t('form.dropzoneHint')}</span>
+              <span className="text-xs">{t('form.dropzoneConstraints')}</span>
             </>
           )}
         </label>
@@ -136,8 +182,8 @@ export function ObjectForm() {
       </div>
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? 'Creating…' : 'Create object'}
+        {isSubmitting ? t('form.submitting') : t('form.submit')}
       </Button>
-    </form>
+    </motion.form>
   );
 }

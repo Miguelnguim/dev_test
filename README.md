@@ -13,10 +13,14 @@ is optimized for a fast first load and a smooth live demo — no cold starts, no
 
 - Create / list / view / delete Objects
 - Image upload to Cloudinary, with real MIME-type sniffing (not just the declared extension) and
-  a 5 MB size limit
-- Real-time updates across all connected clients via Socket.IO (`object.created`, `object.deleted`)
-- Loading / empty / error / success states throughout
-- Responsive, glassmorphism-inspired UI built with shadcn/ui components
+  a 5 MB size limit, drag-and-drop or click to select
+- Real-time updates across all connected clients via Socket.IO (`object.created`, `object.deleted`),
+  with a live connection indicator in the header
+- Client-side search across title and description
+- Bilingual UI (French / English), remembered across visits (`localStorage`), defaulting to the
+  browser's language on first visit
+- Loading / empty / error / success states throughout, with smooth enter/exit animations
+- Responsive, glassmorphism-inspired UI built with shadcn/ui components and Framer Motion
 
 ## Architecture
 

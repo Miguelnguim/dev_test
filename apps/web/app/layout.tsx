@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/sonner';
+import { LanguageProvider } from '@/lib/i18n/language-context';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -15,8 +16,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning>
-        {children}
-        <Toaster position="top-right" richColors />
+        <div className="ambient-glow" aria-hidden="true" />
+        <LanguageProvider>
+          {children}
+          <Toaster position="top-right" richColors />
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { deleteObject } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n/language-context';
 
 export function DeleteObjectDialog({
   id,
@@ -24,6 +25,7 @@ export function DeleteObjectDialog({
   title: string;
   onDeleted?: () => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -31,11 +33,11 @@ export function DeleteObjectDialog({
     setIsDeleting(true);
     try {
       await deleteObject(id);
-      toast.success('Object deleted successfully.');
+      toast.success(t('deleteDialog.success'));
       setOpen(false);
       onDeleted?.();
     } catch {
-      toast.error('Unable to delete this object. Try again.');
+      toast.error(t('deleteDialog.error'));
     } finally {
       setIsDeleting(false);
     }
@@ -46,22 +48,22 @@ export function DeleteObjectDialog({
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
           <Trash2 />
-          Delete
+          {t('card.delete')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete object?</DialogTitle>
+          <DialogTitle>{t('deleteDialog.title')}</DialogTitle>
           <DialogDescription>
-            This will permanently delete &ldquo;{title}&rdquo;. This action cannot be undone.
+            {t('deleteDialog.description', { title })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isDeleting}>
-            Cancel
+            {t('deleteDialog.cancel')}
           </Button>
           <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? 'Deleting…' : 'Delete'}
+            {isDeleting ? t('deleteDialog.deleting') : t('deleteDialog.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>
