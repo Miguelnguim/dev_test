@@ -11,10 +11,11 @@ is optimized for a fast first load and a smooth live demo — no cold starts, no
 
 ## Features
 
-- Create / list / view / delete Objects
+- Full CRUD on Objects: create, list, view, edit (title/description and optionally the image), and delete
 - Image upload to Cloudinary, with real MIME-type sniffing (not just the declared extension) and
   a 5 MB size limit, drag-and-drop or click to select
-- Real-time updates across all connected clients via Socket.IO (`object.created`, `object.deleted`),
+- Real-time updates across all connected clients via Socket.IO (`object.created`, `object.updated`,
+  `object.deleted`),
   with a live connection indicator in the header
 - Client-side search across title and description
 - Bilingual UI (French / English), remembered across visits (`localStorage`), defaulting to the
@@ -115,6 +116,7 @@ pnpm dev:web   # Next.js on http://localhost:3000
 | POST   | `/objects`      | Create an object (multipart/form-data: title, description, image) |
 | GET    | `/objects`      | List all objects                    |
 | GET    | `/objects/:id`  | Get a single object                 |
+| PATCH  | `/objects/:id`  | Update an object (multipart/form-data: title, description, image — all optional) |
 | DELETE | `/objects/:id`  | Delete an object (and its Cloudinary image) |
 
 Responses use `201`, `200`, `204`, `400`, `404`, `413`, and `500` as appropriate — never a blanket
@@ -125,6 +127,7 @@ Responses use `201`, `200`, `204`, `400`, `404`, `413`, and `500` as appropriate
 | Event             | Payload                       | Emitted when                  |
 |--------------------|-------------------------------|--------------------------------|
 | `object.created`  | full Object                    | after a successful `POST`      |
+| `object.updated`  | full Object                    | after a successful `PATCH`     |
 | `object.deleted`  | `{ id: string }`               | after a successful `DELETE`    |
 
 ## Deployment

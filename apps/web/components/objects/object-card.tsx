@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { Pencil } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DeleteObjectDialog } from './delete-object-dialog';
@@ -39,7 +40,15 @@ export function ObjectCard({
         <Button variant="outline" size="sm" asChild>
           <Link href={`/objects/${object.id}`}>{t('card.view')}</Link>
         </Button>
-        <DeleteObjectDialog id={object.id} title={object.title} onDeleted={onDeleted} />
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/objects/${object.id}/edit`}>
+              <Pencil />
+              {t('card.edit')}
+            </Link>
+          </Button>
+          <DeleteObjectDialog id={object.id} title={object.title} onDeleted={onDeleted} />
+        </div>
       </CardFooter>
     </Card>
   );

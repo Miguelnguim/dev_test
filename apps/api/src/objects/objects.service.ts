@@ -8,6 +8,7 @@ import { Model, Types } from 'mongoose';
 import { fileTypeFromBuffer } from 'file-type';
 import { ObjectEntity, ObjectDocument } from './schemas/object.schema.js';
 import { CreateObjectDto } from './dto/create-object.dto.js';
+import { UpdateObjectDto } from './dto/update-object.dto.js';
 import { ObjectResponseDto } from './dto/object-response.dto.js';
 import { StorageService } from '../storage/storage.service.js';
 import { ObjectsGateway } from './objects.gateway.js';
@@ -76,6 +77,51 @@ export class ObjectsService {
     return this.toResponseDto(object);
   }
 
+  async update(
+    id: string,
+    dto: UpdateObjectDto,
+    file?: Express.Multer.File,
+  ): Promise<ObjectResponseDto> {
+    this.assertValidId(id);
+
+    const object = await this.objectModel.findById(id).exec();
+    if (!object) {
+      throw new NotFoundException('Object not found');
+    }
+
+    if (dto.title !== undefined) {
+      object.title = dto.title;
+    }
+    if (dto.description !== undefined) {
+      object.description = dto.description;
+    }
+
+    if (file) {
+      const detected = await fileTypeFromBuffer(file.buffer);
+      const realMime = detected?.mime;
+
+      if (!realMime || !ALLOWED_MIME_TYPES.includes(realMime)) {
+        throw new BadRequestException(
+          'Invalid image type. Allowed types: JPEG, PNG, WEBP',
+        );
+      }
+
+      // Upload the replacement first — only delete the old image once the new one is confirmed,
+      // so a failed upload never leaves the object without any image.
+      const previousImageKey = object.imageKey;
+      const { key, url } = await this.storageService.uploadImage(file);
+      object.imageUrl = url;
+      object.imageKey = key;
+      await this.storageService.deleteImage(previousImageKey);
+    }
+
+    await object.save();
+
+    const response = this.toResponseDto(object);
+    this.gateway.emitUpdated(response);
+    return response;
+  }
+
   async remove(id: string): Promise<void> {
     this.assertValidId(id);
 
@@ -104,6 +150,7 @@ export class ObjectsService {
       description: object.description,
       imageUrl: object.imageUrl,
       createdAt: object.createdAt,
+      updatedAt: object.updatedAt,
     };
   }
 }

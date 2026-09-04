@@ -4,4 +4,5 @@ export class ObjectResponseDto {
   description: string;
   imageUrl: string;
   createdAt: Date;
+  updatedAt: Date;
 }

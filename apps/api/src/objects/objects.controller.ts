@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -13,6 +14,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ObjectsService } from './objects.service.js';
 import { CreateObjectDto } from './dto/create-object.dto.js';
+import { UpdateObjectDto } from './dto/update-object.dto.js';
 import { ObjectResponseDto } from './dto/object-response.dto.js';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -43,6 +45,20 @@ export class ObjectsController {
   @Get(':id')
   findOne(@Param('id') id: string): Promise<ObjectResponseDto> {
     return this.objectsService.findOne(id);
+  }
+
+  @Patch(':id')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      limits: { fileSize: MAX_FILE_SIZE_BYTES },
+    }),
+  )
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateObjectDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<ObjectResponseDto> {
+    return this.objectsService.update(id, dto, file);
   }
 
   @Delete(':id')

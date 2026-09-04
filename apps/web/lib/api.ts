@@ -54,6 +54,19 @@ export async function createObject(formData: FormData): Promise<HeyamaObject> {
   return response.json();
 }
 
+export async function updateObject(id: string, formData: FormData): Promise<HeyamaObject> {
+  const response = await fetch(`${API_URL}/objects/${id}`, {
+    method: 'PATCH',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new ApiError(await parseErrorMessage(response), response.status);
+  }
+
+  return response.json();
+}
+
 export async function deleteObject(id: string): Promise<void> {
   const response = await fetch(`${API_URL}/objects/${id}`, { method: 'DELETE' });
 

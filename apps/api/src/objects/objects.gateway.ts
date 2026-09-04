@@ -16,6 +16,10 @@ export class ObjectsGateway {
     this.server.emit('object.created', object);
   }
 
+  emitUpdated(object: ObjectResponseDto) {
+    this.server.emit('object.updated', object);
+  }
+
   emitDeleted(id: string) {
     this.server.emit('object.deleted', { id });
   }

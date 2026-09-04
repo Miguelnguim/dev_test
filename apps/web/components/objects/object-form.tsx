@@ -11,18 +11,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { createObject } from '@/lib/api';
+import { createObject, updateObject } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n/language-context';
 import { cn } from '@/lib/utils';
+import type { HeyamaObject } from '@/types/object';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-export function ObjectForm() {
+export function ObjectForm({ object }: { object?: HeyamaObject }) {
   const { t } = useTranslation();
   const router = useRouter();
+  const isEditMode = Boolean(object);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(object?.imageUrl ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -32,19 +34,17 @@ export function ObjectForm() {
       setError(null);
 
       if (!file) {
-        setPreview(null);
+        setPreview(object?.imageUrl ?? null);
         return;
       }
 
       if (!ALLOWED_TYPES.includes(file.type)) {
         setError(t('form.errorInvalidType'));
-        setPreview(null);
         return;
       }
 
       if (file.size > MAX_FILE_SIZE_BYTES) {
         setError(t('form.errorTooLarge'));
-        setPreview(null);
         return;
       }
 
@@ -56,7 +56,7 @@ export function ObjectForm() {
 
       setPreview(URL.createObjectURL(file));
     },
-    [t],
+    [t, object?.imageUrl],
   );
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -78,20 +78,32 @@ export function ObjectForm() {
     const formData = new FormData(formEl);
     const file = fileInputRef.current?.files?.[0];
 
-    if (!file) {
+    if (!isEditMode && !file) {
       setError(t('form.errorRequiredImage'));
       return;
     }
 
+    if (!file) {
+      // Nothing to upload in edit mode — don't send an empty "image" field.
+      formData.delete('image');
+    }
+
     setIsSubmitting(true);
     try {
-      await createObject(formData);
-      toast.success(t('form.success'));
-      formEl.reset();
-      setPreview(null);
-      router.push('/');
+      if (isEditMode && object) {
+        await updateObject(object.id, formData);
+        toast.success(t('editForm.success'));
+        router.push(`/objects/${object.id}`);
+        router.refresh();
+      } else {
+        await createObject(formData);
+        toast.success(t('form.success'));
+        formEl.reset();
+        setPreview(null);
+        router.push('/');
+      }
     } catch {
-      setError(t('form.error'));
+      setError(isEditMode ? t('editForm.error') : t('form.error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -121,6 +133,7 @@ export function ObjectForm() {
           required
           maxLength={100}
           placeholder={t('form.titlePlaceholder')}
+          defaultValue={object?.title}
         />
       </div>
 
@@ -132,6 +145,7 @@ export function ObjectForm() {
           required
           maxLength={1000}
           placeholder={t('form.descriptionPlaceholder')}
+          defaultValue={object?.description}
         />
       </div>
 
@@ -169,6 +183,9 @@ export function ObjectForm() {
             </>
           )}
         </label>
+        {isEditMode && (
+          <p className="text-xs text-muted-foreground">{t('editForm.imageHint')}</p>
+        )}
         <Input
           ref={fileInputRef}
           id="image"
@@ -177,12 +194,18 @@ export function ObjectForm() {
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
           onChange={handleFileChange}
-          required
+          required={!isEditMode}
         />
       </div>
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? t('form.submitting') : t('form.submit')}
+        {isSubmitting
+          ? isEditMode
+            ? t('editForm.submitting')
+            : t('form.submitting')
+          : isEditMode
+            ? t('editForm.submit')
+            : t('form.submit')}
       </Button>
     </motion.form>
   );

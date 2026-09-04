@@ -23,6 +23,12 @@ export function HomeView({ initialObjects }: { initialObjects: HeyamaObject[] })
       setObjects((current) => [object, ...current.filter((o) => o.id !== object.id)]);
     }
 
+    function handleUpdated(updatedObject: HeyamaObject) {
+      setObjects((current) =>
+        current.map((object) => (object.id === updatedObject.id ? updatedObject : object)),
+      );
+    }
+
     function handleDeleted({ id }: { id: string }) {
       setObjects((current) => current.filter((object) => object.id !== id));
     }
@@ -38,12 +44,14 @@ export function HomeView({ initialObjects }: { initialObjects: HeyamaObject[] })
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on(SOCKET_EVENTS.OBJECT_CREATED, handleCreated);
+    socket.on(SOCKET_EVENTS.OBJECT_UPDATED, handleUpdated);
     socket.on(SOCKET_EVENTS.OBJECT_DELETED, handleDeleted);
 
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off(SOCKET_EVENTS.OBJECT_CREATED, handleCreated);
+      socket.off(SOCKET_EVENTS.OBJECT_UPDATED, handleUpdated);
       socket.off(SOCKET_EVENTS.OBJECT_DELETED, handleDeleted);
     };
   }, []);

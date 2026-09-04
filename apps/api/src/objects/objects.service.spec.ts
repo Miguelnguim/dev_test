@@ -16,6 +16,7 @@ function buildService(overrides: Partial<Record<string, unknown>> = {}) {
   };
   const gateway = {
     emitCreated: vi.fn(),
+    emitUpdated: vi.fn(),
     emitDeleted: vi.fn(),
   };
 
@@ -57,6 +58,85 @@ describe('ObjectsService', () => {
       NotFoundException,
     );
     expect(objectModel.findById).toHaveBeenCalledWith(validId);
+  });
+
+  it('rejects update with an invalid id', async () => {
+    const { service } = buildService();
+
+    await expect(
+      service.update('not-an-id', { title: 'New title' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('throws NotFoundException when updating an object that does not exist', async () => {
+    const validId = new Types.ObjectId().toString();
+    const { service } = buildService({
+      findById: vi.fn().mockReturnValue({ exec: vi.fn().mockResolvedValue(null) }),
+    });
+
+    await expect(
+      service.update(validId, { title: 'New title' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('updates title/description without touching the image when no file is provided', async () => {
+    const validId = new Types.ObjectId().toString();
+    const found = {
+      _id: validId,
+      title: 'Old title',
+      description: 'Old description',
+      imageUrl: 'https://example.com/old.jpg',
+      imageKey: 'objects/old.jpg',
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+    const { service, storageService, gateway } = buildService({
+      findById: vi.fn().mockReturnValue({ exec: vi.fn().mockResolvedValue(found) }),
+    });
+
+    const result = await service.update(validId, { title: 'New title' });
+
+    expect(found.title).toBe('New title');
+    expect(found.description).toBe('Old description');
+    expect(found.save).toHaveBeenCalled();
+    expect(storageService.uploadImage).not.toHaveBeenCalled();
+    expect(storageService.deleteImage).not.toHaveBeenCalled();
+    expect(gateway.emitUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'New title' }),
+    );
+    expect(result.title).toBe('New title');
+  });
+
+  it('replaces the image and deletes the old one only after a successful upload', async () => {
+    const validId = new Types.ObjectId().toString();
+    const found = {
+      _id: validId,
+      title: 'Chair',
+      description: 'Wooden chair',
+      imageUrl: 'https://example.com/old.jpg',
+      imageKey: 'objects/old.jpg',
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+    const { service, storageService } = buildService({
+      findById: vi.fn().mockReturnValue({ exec: vi.fn().mockResolvedValue(found) }),
+    });
+    storageService.uploadImage.mockResolvedValue({
+      key: 'objects/new.jpg',
+      url: 'https://example.com/new.jpg',
+    });
+
+    const jpegHeader = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+    const file = { buffer: jpegHeader } as Express.Multer.File;
+
+    await service.update(validId, {}, file);
+
+    expect(storageService.uploadImage).toHaveBeenCalledWith(file);
+    expect(storageService.deleteImage).toHaveBeenCalledWith('objects/old.jpg');
+    expect(found.imageKey).toBe('objects/new.jpg');
+    expect(found.imageUrl).toBe('https://example.com/new.jpg');
   });
 
   it('deletes the image and the document, then emits object.deleted', async () => {

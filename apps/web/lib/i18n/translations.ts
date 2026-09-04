@@ -19,6 +19,7 @@ export const translations = {
     },
     card: {
       view: 'Voir',
+      edit: 'Modifier',
       delete: 'Supprimer',
     },
     deleteDialog: {
@@ -52,6 +53,15 @@ export const translations = {
     detail: {
       backToObjects: 'Retour aux objets',
       createdOn: 'Créé le {date}',
+      editedOn: 'Modifié le {date}',
+    },
+    editForm: {
+      title: "Modifier l'objet",
+      submit: 'Enregistrer les modifications',
+      submitting: 'Enregistrement…',
+      success: 'Objet modifié avec succès.',
+      error: 'Impossible de modifier cet objet. Réessaie.',
+      imageHint: "Laisse vide pour conserver l'image actuelle.",
     },
     notFound: {
       title: 'Objet introuvable',
@@ -79,6 +89,7 @@ export const translations = {
     },
     card: {
       view: 'View',
+      edit: 'Edit',
       delete: 'Delete',
     },
     deleteDialog: {
@@ -112,6 +123,15 @@ export const translations = {
     detail: {
       backToObjects: 'Back to objects',
       createdOn: 'Created on {date}',
+      editedOn: 'Edited on {date}',
+    },
+    editForm: {
+      title: 'Edit Object',
+      submit: 'Save changes',
+      submitting: 'Saving…',
+      success: 'Object updated successfully.',
+      error: 'Unable to update this object. Please try again.',
+      imageHint: 'Leave empty to keep the current image.',
     },
     notFound: {
       title: 'Object not found',

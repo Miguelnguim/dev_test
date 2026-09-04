@@ -4,7 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { DeleteObjectDialog } from './delete-object-dialog';
 import { useTranslation } from '@/lib/i18n/language-context';
 import type { HeyamaObject } from '@/types/object';
@@ -12,10 +13,14 @@ import type { HeyamaObject } from '@/types/object';
 export function ObjectDetailView({ object }: { object: HeyamaObject }) {
   const { t, language } = useTranslation();
   const router = useRouter();
+  const locale = language === 'fr' ? 'fr-FR' : 'en-US';
 
-  const formattedDate = new Date(object.createdAt).toLocaleDateString(
-    language === 'fr' ? 'fr-FR' : 'en-US',
-  );
+  const formattedCreatedAt = new Date(object.createdAt).toLocaleDateString(locale);
+  const wasEdited =
+    object.updatedAt && new Date(object.updatedAt).getTime() > new Date(object.createdAt).getTime();
+  const formattedUpdatedAt = wasEdited
+    ? new Date(object.updatedAt).toLocaleDateString(locale)
+    : null;
 
   return (
     <>
@@ -48,17 +53,26 @@ export function ObjectDetailView({ object }: { object: HeyamaObject }) {
             <h1 className="text-2xl font-semibold tracking-tight">{object.title}</h1>
             <p className="mt-2 text-muted-foreground">{object.description}</p>
             <p className="mt-4 text-xs text-muted-foreground">
-              {t('detail.createdOn', { date: formattedDate })}
+              {t('detail.createdOn', { date: formattedCreatedAt })}
+              {formattedUpdatedAt && ` · ${t('detail.editedOn', { date: formattedUpdatedAt })}`}
             </p>
           </div>
-          <DeleteObjectDialog
-            id={object.id}
-            title={object.title}
-            onDeleted={() => {
-              router.push('/');
-              router.refresh();
-            }}
-          />
+          <div className="flex shrink-0 items-center gap-1">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/objects/${object.id}/edit`}>
+                <Pencil />
+                {t('card.edit')}
+              </Link>
+            </Button>
+            <DeleteObjectDialog
+              id={object.id}
+              title={object.title}
+              onDeleted={() => {
+                router.push('/');
+                router.refresh();
+              }}
+            />
+          </div>
         </div>
       </motion.div>
     </>

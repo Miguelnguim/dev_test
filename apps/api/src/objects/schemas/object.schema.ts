@@ -3,7 +3,7 @@ import { HydratedDocument } from 'mongoose';
 
 export type ObjectDocument = HydratedDocument<ObjectEntity>;
 
-@Schema({ timestamps: { createdAt: true, updatedAt: false } })
+@Schema({ timestamps: { createdAt: true, updatedAt: true } })
 export class ObjectEntity {
   @Prop({ required: true, trim: true, maxlength: 100 })
   title: string;
@@ -15,9 +15,10 @@ export class ObjectEntity {
   imageUrl: string;
 
   @Prop({ required: true })
-  imageKey: string; // R2 object key, needed to delete the file later
+  imageKey: string; // Cloudinary public_id, needed to delete/replace the asset later
 
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export const ObjectSchema = SchemaFactory.createForClass(ObjectEntity);
