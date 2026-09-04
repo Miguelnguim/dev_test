@@ -1,10 +1,11 @@
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { ObjectResponseDto } from './dto/object-response.dto.js';
+import { corsOriginValidator } from '../common/cors.js';
 
 @WebSocketGateway({
   cors: {
-    origin: [process.env.FRONTEND_URL ?? 'http://localhost:3000', 'http://localhost:3000'],
+    origin: corsOriginValidator,
     credentials: true,
   },
 })
